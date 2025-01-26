@@ -10,18 +10,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class MessageServiceImpl implements MessageService {
     private final TelegramBot telegramBot;
-    private Logger logger = LoggerFactory.getLogger(MessageServiceImpl.class);
+    private final Logger logger = LoggerFactory.getLogger(MessageServiceImpl.class);
 
     public MessageServiceImpl(TelegramBot telegramBot) {
         this.telegramBot = telegramBot;
     }
 
     @Override
-    public void send(Long chatId, String messageText, String userName) {
-        SendMessage message = new SendMessage(
-                chatId,
-                "Привет, " + userName + "!"
-        );
+    public void send(Long chatId, String messageText) {
+        SendMessage message = new SendMessage(chatId, messageText);
         SendResponse response = telegramBot.execute(message);
         checkResponse(response);
     }

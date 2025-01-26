@@ -50,9 +50,8 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             logger.info("Processing update: {}", update);
             String text = update.message().text();
             Long chatId = update.message().chat().id();
-            String userName = update.message().from().username();
             if ("/start".equals(text)) {
-                messageService.send(chatId, text, userName);
+                messageService.send(chatId, text);
             } else {
                 Matcher matcher = INCOMING_MESSAGE_PATTERN.matcher(text);
 
@@ -64,7 +63,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
                     notificationTask.setChildId(chatId);
                     notificationTask.setMessageText(notificationMessage);
                     notificationTask.setNotificationDateTime(notificationDateTime);
-                    
+
                     notificationTaskRepository.save(notificationTask);
                 } else {
                     messageService.sendError(chatId);
