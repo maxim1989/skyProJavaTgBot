@@ -3,22 +3,41 @@ package pro.sky.telegrambot.listener;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;
-import com.pengrad.telegrambot.request.SendMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import pro.sky.telegrambot.entity.NotificationTask;
+import pro.sky.telegrambot.repository.NotificationTaskRepository;
+import pro.sky.telegrambot.service.MessageService;
 
 import javax.annotation.PostConstruct;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class TelegramBotUpdatesListener implements UpdatesListener {
 
-    private Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
+    private final Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
 
-    @Autowired
-    private TelegramBot telegramBot;
+    private final TelegramBot telegramBot;
+    private final MessageService messageService;
+    private final Pattern INCOMING_MESSAGE_PATTERN = Pattern
+            .compile("(\\d{2}\\.\\d{2}\\.\\d{4}\\s\\d{2}:\\d{2})(\\s+)(.+)");
+    private final NotificationTaskRepository notificationTaskRepository;
+    private final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
+    public TelegramBotUpdatesListener(
+            TelegramBot telegramBot,
+            MessageService messageService,
+            NotificationTaskRepository notificationTaskRepository
+    ) {
+        this.telegramBot = telegramBot;
+        this.messageService = messageService;
+        this.notificationTaskRepository = notificationTaskRepository;
+    }
 
     @PostConstruct
     public void init() {
@@ -29,12 +48,27 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
     public int process(List<Update> updates) {
         updates.forEach(update -> {
             logger.info("Processing update: {}", update);
-            if ("/start".equals(update.message().text())) {
-                SendMessage message = new SendMessage(
-                        update.message().chat().id(),
-                        "Привет, " + update.message().from().username() + "!"
-                );
-                telegramBot.execute(message);
+            String text = update.message().text();
+            Long chatId = update.message().chat().id();
+            String userName = update.message().from().username();
+            if ("/start".equals(text)) {
+                messageService.send(chatId, text, userName);
+            } else {
+                Matcher matcher = INCOMING_MESSAGE_PATTERN.matcher(text);
+
+                if (matcher.matches()) {
+                    LocalDateTime notificationDateTime = LocalDateTime.parse(matcher.group(1), DATE_FORMAT);
+                    String notificationMessage = matcher.group(3);
+
+                    NotificationTask notificationTask = new NotificationTask();
+                    notificationTask.setChildId(chatId);
+                    notificationTask.setMessageText(notificationMessage);
+                    notificationTask.setNotificationDateTime(notificationDateTime);
+                    
+                    notificationTaskRepository.save(notificationTask);
+                } else {
+                    messageService.sendError(chatId);
+                }
             }
         });
         return UpdatesListener.CONFIRMED_UPDATES_ALL;
