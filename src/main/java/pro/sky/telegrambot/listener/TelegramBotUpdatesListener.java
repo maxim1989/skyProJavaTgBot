@@ -28,6 +28,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             .compile("(\\d{2}\\.\\d{2}\\.\\d{4}\\s\\d{2}:\\d{2})(\\s+)(.+)");
     private final NotificationTaskRepository notificationTaskRepository;
     private final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+    private final String HELLO_TEXT = "Привет!";
 
     public TelegramBotUpdatesListener(
             TelegramBot telegramBot,
@@ -51,7 +52,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             String text = update.message().text();
             Long chatId = update.message().chat().id();
             if ("/start".equals(text)) {
-                messageService.send(chatId, text);
+                messageService.send(chatId, HELLO_TEXT);
             } else {
                 Matcher matcher = INCOMING_MESSAGE_PATTERN.matcher(text);
 
